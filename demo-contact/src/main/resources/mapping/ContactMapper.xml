@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.baoanj.contacts.mapper.ContactMapper">
+    <resultMap type="xyz.baoanj.contacts.entity.Contact" id="detailContactResultMap">
+        <id property="id" column="contact_id" />
+        <result property="fullName" column="full_name" />
+        <result property="phoneNumber" column="phone_number" />
+        <association property="address" javaType="xyz.baoanj.contacts.entity.Address" >
+            <id property="contactId" column="contact_id" />
+            <result property="province" column="province" />
+            <result property="city" column="city" />
+            <result property="detail" column="detail" />
+        </association>
+    </resultMap>
+
+    <select id="findAllContactsXML" resultMap="detailContactResultMap">
+        select
+        C.contact_id as contact_id,
+        C.full_name as full_name,
+        C.phone_number as phone_number,
+        A.province as province,
+        A.city as city,
+        A.detail as detail
+        from contacts C
+        left join address A
+        on C.contact_id = A.contact_id
+        order by C.contact_id
+    </select>
+
+    <insert id="addContactXML" useGeneratedKeys="true" keyProperty="id" keyColumn="contact_id">
+        insert into contacts (full_name, phone_number)
+        values (#{fullName}, #{phoneNumber})
+    </insert>
+
+    <insert id="addAddressXML">
+        insert into address (contact_id, province, city, detail)
+        values (#{contactId}, #{province}, #{city}, #{detail})
+    </insert>
+</mapper>
