@@ -41,7 +41,6 @@ public class ShiroConfig {
         filterChainDefinitionMap.put("/contact/createWithFile", "login,contact[contact:create]");
         filterChainDefinitionMap.put("/contact/list", "login,contact[contact:query]");
         filterChainDefinitionMap.put("/contact/**", "login");
-        filterChainDefinitionMap.put("/ws/checkLoginForWs", "anon");
         filterChainDefinitionMap.put("/ws/**", "login");
         filterChainDefinitionMap.put("/**", "login");
         shiroFilterFactoryBean.setFilterChainDefinitionMap(filterChainDefinitionMap);

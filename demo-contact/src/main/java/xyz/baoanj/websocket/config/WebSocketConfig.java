@@ -1,5 +1,6 @@
 package xyz.baoanj.websocket.config;
 
+import com.alibaba.fastjson.JSONObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
@@ -26,23 +27,31 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(marcoHandler(), "/ws/simple")
             .addInterceptors(new HandshakeInterceptor() {
                 @Override
-                public boolean beforeHandshake(ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse, WebSocketHandler webSocketHandler, Map<String, Object> map) {
-                    UserInfo user = ChatController.theUser;
-                    if (user == null) return false;
-                    map.put("user", user);
-                    ChatController.theUser = null;
+                public boolean beforeHandshake(ServerHttpRequest request,
+                                               ServerHttpResponse response,
+                                               WebSocketHandler handler,
+                                               Map<String, Object> map) {
+                    String principal = JSONObject.toJSONString(request.getPrincipal());
+                    JSONObject userJO = JSONObject.parseObject(principal);
+                    map.put("username", userJO.getJSONObject("object")
+                            .getString("username"));
                     return true;
                 }
 
                 @Override
-                public void afterHandshake(ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse, WebSocketHandler webSocketHandler, Exception e) {
+                public void afterHandshake(ServerHttpRequest request,
+                                           ServerHttpResponse response,
+                                           WebSocketHandler handler,
+                                           Exception e) {
 
                 }
             }).setHandshakeHandler(new DefaultHandshakeHandler() {
                 @Override
-                protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler, Map<String, Object> map) {
-                    UserInfo user = (UserInfo) map.get("user");
-                    return () -> user.getUsername();
+                protected Principal determineUser(ServerHttpRequest request,
+                                                  WebSocketHandler wsHandler,
+                                                  Map<String, Object> map) {
+                    String username = (String) map.get("username");
+                    return () -> username;
                 }
             }).setAllowedOrigins("*");
     }

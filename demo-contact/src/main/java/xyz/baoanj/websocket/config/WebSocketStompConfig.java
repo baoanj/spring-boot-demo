@@ -1,5 +1,6 @@
 package xyz.baoanj.websocket.config;
 
+import com.alibaba.fastjson.JSONObject;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -10,8 +11,6 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
-import xyz.baoanj.contacts.entity.UserInfo;
-import xyz.baoanj.websocket.web.ChatController;
 
 import java.security.Principal;
 import java.util.Map;
@@ -25,31 +24,70 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws/stomp")
             .addInterceptors(new HandshakeInterceptor() {
                 @Override
-                public boolean beforeHandshake(ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse, WebSocketHandler webSocketHandler, Map<String, Object> map) {
-                    UserInfo user = ChatController.theUser;
-                    if (user == null) return false;
-                    map.put("user", user);
-                    ChatController.theUser = null;
+                public boolean beforeHandshake(ServerHttpRequest request,
+                                               ServerHttpResponse response,
+                                               WebSocketHandler handler,
+                                               Map<String, Object> map) {
+                    String principal = JSONObject.toJSONString(request.getPrincipal());
+                    JSONObject userJO = JSONObject.parseObject(principal);
+                    map.put("username", userJO.getJSONObject("object")
+                            .getString("username"));
                     return true;
                 }
 
                 @Override
-                public void afterHandshake(ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse, WebSocketHandler webSocketHandler, Exception e) {
+                public void afterHandshake(ServerHttpRequest request,
+                                           ServerHttpResponse response,
+                                           WebSocketHandler handler,
+                                           Exception e) {
 
                 }
             }).setHandshakeHandler(new DefaultHandshakeHandler() {
                 @Override
-                protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler, Map<String, Object> map) {
-                    UserInfo user = (UserInfo) map.get("user");
-                    return () -> user.getUsername();
+                protected Principal determineUser(ServerHttpRequest request,
+                                                  WebSocketHandler handler,
+                                                  Map<String, Object> map) {
+                    String username = (String) map.get("username");
+                    return () -> username;
                 }
             });
+
+        registry.addEndpoint("/ws/jms")
+                .addInterceptors(new HandshakeInterceptor() {
+                    @Override
+                    public boolean beforeHandshake(ServerHttpRequest request,
+                                                   ServerHttpResponse response,
+                                                   WebSocketHandler handler,
+                                                   Map<String, Object> map) {
+                        String principal = JSONObject.toJSONString(request.getPrincipal());
+                        JSONObject userJO = JSONObject.parseObject(principal);
+                        map.put("username", userJO.getJSONObject("object")
+                                                  .getString("username"));
+                        return true;
+                    }
+
+                    @Override
+                    public void afterHandshake(ServerHttpRequest request,
+                                               ServerHttpResponse response,
+                                               WebSocketHandler handler,
+                                               Exception e) {
+
+                    }
+                }).setHandshakeHandler(new DefaultHandshakeHandler() {
+                    @Override
+                    protected Principal determineUser(ServerHttpRequest request,
+                                                      WebSocketHandler handler,
+                                                      Map<String, Object> map) {
+                        String username = (String) map.get("username");
+                        return () -> username;
+                    }
+                });
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
 //         registry.enableSimpleBroker("/queue", "/topic"); // 内存代理
-        registry.enableStompBrokerRelay("/queue", "/topic"); // STOMP代理
+        registry.enableStompBrokerRelay("/queue", "/topic"); // STOMP代理 RabbitMQ/ActiveMQ
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }

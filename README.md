@@ -2,7 +2,7 @@
 
 ## Run
 - `edit application.properties`
-- `initial schema`
+- `initial schema(run demo-contact/src/main/resources/schema.sql in MySQL)`
 - `run Redis`
 - `run ZooKeeper`
 - `run RabbitMQ`

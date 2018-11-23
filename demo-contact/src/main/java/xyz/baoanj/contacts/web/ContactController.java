@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import xyz.baoanj.contacts.entity.*;
 import xyz.baoanj.contacts.service.BookService;
 import xyz.baoanj.contacts.service.ContactService;
+import xyz.baoanj.contacts.service.JmsSenderService;
 import xyz.baoanj.contacts.service.UserInfoService;
 
 import javax.annotation.Resource;
@@ -21,6 +22,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/contact")
+@ControllerAdvice
 public class ContactController {
 
     final static String UPLOAD_PATH = ClassLoader.getSystemResource("")
@@ -32,6 +34,8 @@ public class ContactController {
     private UserInfoService userInfoService;
     @Resource
     private BookService bookService;
+    @Resource
+    private JmsSenderService jmsSenderService;
 
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     @ResponseBody
@@ -41,6 +45,9 @@ public class ContactController {
 
         // Dubbo Test
         // bookService.addBook("Java核心技术（卷I）基础知识（第10版）", 988);
+
+        // JMS Test
+        // jmsSenderService.sendAllContacts(contacts);
 
         JSONObject res = new JSONObject();
         res.put("code", 1);
@@ -61,10 +68,12 @@ public class ContactController {
             @RequestParam(value = "address", required = false) String addressStr
     ) throws IOException {
         // handle upload files
-        File uploadFolder = new File(UPLOAD_PATH);
-        if (!uploadFolder.exists()) uploadFolder.mkdirs();
-        for (MultipartFile file : attachments) {
-            file.transferTo(new File(UPLOAD_PATH + file.getOriginalFilename()));
+        if (attachments.size() > 0) {
+            File uploadFolder = new File(UPLOAD_PATH);
+            if (!uploadFolder.exists()) uploadFolder.mkdirs();
+            for (MultipartFile file : attachments) {
+                file.transferTo(new File(UPLOAD_PATH + file.getOriginalFilename()));
+            }
         }
 
         JSONObject addressObj = JSON.parseObject(addressStr);
@@ -76,6 +85,8 @@ public class ContactController {
         // Shiro Session
         Subject subject = SecurityUtils.getSubject();
         UserInfo user = (UserInfo) subject.getSession().getAttribute("user");
+
+        jmsSenderService.noticeNewContact(user);
 
         // response
         JSONObject res = new JSONObject();
@@ -103,7 +114,10 @@ public class ContactController {
         try {
             subject.login(token);
         } catch (IncorrectCredentialsException e) {
-            response.sendError(401, "用户名或密码错误");
+            // response.sendError(401, "用户名或密码错误");
+            // or 更可控的一种方式
+            response.setStatus(401);
+            res.put("message", "用户名或密码错误");
             return res;
         } catch (UnknownAccountException e) {
             response.sendError(401, "该用户不存在");
