@@ -21,38 +21,8 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/stomp")
-            .addInterceptors(new HandshakeInterceptor() {
-                @Override
-                public boolean beforeHandshake(ServerHttpRequest request,
-                                               ServerHttpResponse response,
-                                               WebSocketHandler handler,
-                                               Map<String, Object> map) {
-                    String principal = JSONObject.toJSONString(request.getPrincipal());
-                    JSONObject userJO = JSONObject.parseObject(principal);
-                    map.put("username", userJO.getJSONObject("object")
-                            .getString("username"));
-                    return true;
-                }
-
-                @Override
-                public void afterHandshake(ServerHttpRequest request,
-                                           ServerHttpResponse response,
-                                           WebSocketHandler handler,
-                                           Exception e) {
-
-                }
-            }).setHandshakeHandler(new DefaultHandshakeHandler() {
-                @Override
-                protected Principal determineUser(ServerHttpRequest request,
-                                                  WebSocketHandler handler,
-                                                  Map<String, Object> map) {
-                    String username = (String) map.get("username");
-                    return () -> username;
-                }
-            });
-
-        registry.addEndpoint("/ws/jms")
+        // TODO: 多个Endpoint并没有什么用，convertAndSend不知道可不可以指定Endpoint
+        registry.addEndpoint("/ws/stomp", "/ws/jms", "/ws/amqp")
                 .addInterceptors(new HandshakeInterceptor() {
                     @Override
                     public boolean beforeHandshake(ServerHttpRequest request,
@@ -62,7 +32,7 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
                         String principal = JSONObject.toJSONString(request.getPrincipal());
                         JSONObject userJO = JSONObject.parseObject(principal);
                         map.put("username", userJO.getJSONObject("object")
-                                                  .getString("username"));
+                                .getString("username"));
                         return true;
                     }
 
@@ -86,7 +56,7 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-//         registry.enableSimpleBroker("/queue", "/topic"); // 内存代理
+        // registry.enableSimpleBroker("/queue", "/topic"); // 内存代理
         registry.enableStompBrokerRelay("/queue", "/topic"); // STOMP代理 RabbitMQ/ActiveMQ
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");

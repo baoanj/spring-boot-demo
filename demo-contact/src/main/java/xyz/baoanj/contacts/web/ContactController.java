@@ -9,10 +9,7 @@ import org.apache.shiro.subject.Subject;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.baoanj.contacts.entity.*;
-import xyz.baoanj.contacts.service.BookService;
-import xyz.baoanj.contacts.service.ContactService;
-import xyz.baoanj.contacts.service.JmsSenderService;
-import xyz.baoanj.contacts.service.UserInfoService;
+import xyz.baoanj.contacts.service.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
@@ -36,18 +33,24 @@ public class ContactController {
     private BookService bookService;
     @Resource
     private JmsSenderService jmsSenderService;
+    @Resource
+    private AmqpSenderService amqpSenderService;
 
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     @ResponseBody
-    public JSONObject getContactsList() {
+    public JSONObject getContactsList() throws IOException {
+        if(true) throw new IOException();
         List<Contact> contacts = contactService.getAllContacts();
         JSONArray data = JSON.parseArray(JSON.toJSONString(contacts));
 
         // Dubbo Test
         // bookService.addBook("Java核心技术（卷I）基础知识（第10版）", 988);
 
-        // JMS Test
+        // JMS Test (需关掉RabbitMQ, 开启ActiveMQ)
         // jmsSenderService.sendAllContacts(contacts);
+
+        // AMQP Test
+        amqpSenderService.sendAllContacts(contacts);
 
         JSONObject res = new JSONObject();
         res.put("code", 1);
@@ -65,7 +68,8 @@ public class ContactController {
             @RequestParam(value = "upload_files", required = false) List<MultipartFile> attachments,
             @RequestParam("full_name") String fullName,
             @RequestParam("phone_number") String phoneNumber,
-            @RequestParam(value = "address", required = false) String addressStr
+            @RequestParam(value = "address", required = false) String addressStr,
+            @RequestParam(value = "notice_users", required = false) String noticeUsersStr
     ) throws IOException {
         // handle upload files
         if (attachments.size() > 0) {
@@ -86,7 +90,22 @@ public class ContactController {
         Subject subject = SecurityUtils.getSubject();
         UserInfo user = (UserInfo) subject.getSession().getAttribute("user");
 
-        jmsSenderService.noticeNewContact(user);
+        // JMS (ActiveMQ) - 需关掉RabbitMQ, 开启ActiveMQ
+        // jmsSenderService.noticeNewContact(user);
+
+        // AMQP (RabbitMQ)
+        if (noticeUsersStr.startsWith("[") && noticeUsersStr.endsWith("]")) {
+            JSONArray noticeUsersJA = JSONArray.parseArray(noticeUsersStr);
+            List<String> noticeUsers = noticeUsersJA.toJavaList(String.class);
+            if (noticeUsers.size() == 0) {
+                System.out.println(noticeUsersStr);
+                amqpSenderService.noticeNewContactToAll(user);
+            } else {
+                amqpSenderService.noticeNewContactToUser(user, noticeUsers);
+            }
+        } else {
+            amqpSenderService.noticeNewContactToAll(user);
+        }
 
         // response
         JSONObject res = new JSONObject();

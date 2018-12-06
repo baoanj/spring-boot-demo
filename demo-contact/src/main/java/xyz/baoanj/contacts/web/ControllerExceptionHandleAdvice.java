@@ -9,14 +9,23 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import javax.servlet.http.HttpServletResponse;
 
 @ControllerAdvice
-public class ContactControllerAdvice {
+public class ControllerExceptionHandleAdvice {
 
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ExceptionHandler
     @ResponseBody
-    public JSONObject handleFileUploadException(HttpServletResponse response) {
-        response.setStatus(400);
+    public JSONObject handleIOException(HttpServletResponse response, Exception e) {
+        e.printStackTrace();
+
         JSONObject res = new JSONObject();
-        res.put("message", "文件太大");
+
+        if (e instanceof MaxUploadSizeExceededException) {
+            response.setStatus(400);
+            res.put("message", "上传文件太大");
+        } else {
+            response.setStatus(500);
+            res.put("message", "服务端错误");
+        }
+
         return res;
     }
 
